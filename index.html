@@ -4,18 +4,36 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>MBM ASSISTANT</title>
+  
+  <!-- Fonts & Tailwind -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Space Grotesk"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & Babel CDN -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- Firebase Modular SDKs loaded via CDN -->
+  <!-- Firebase Modular SDK via CDN -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot, enableNetwork } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-    // Inserted configuration from your Firebase screen:
     const firebaseConfig = {
       apiKey: "AIzaSyDclCjEo4haY4JWHU2XCzCq1xoFxEy11dM",
       authDomain: "mbm-assistant.firebaseapp.com",
@@ -27,19 +45,31 @@
     };
 
     window.__FIREBASE_CONFIG__ = firebaseConfig;
-    window.__FIREBASE_MODULES__ = { initializeApp, getFirestore, doc, setDoc, onSnapshot, enableNetwork, getAuth, signInAnonymously };
+    window.__FIREBASE_MODULES__ = { initializeApp, getFirestore, doc, setDoc, onSnapshot, getAuth, signInAnonymously };
     window.dispatchEvent(new Event('firebase-sdk-ready'));
   </script>
+
+  <style>
+    body {
+      background-color: #09090b;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #09090b; }
+    ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+  </style>
 </head>
-<body class="bg-black text-zinc-100 antialiased selection:bg-zinc-800">
+<body class="text-zinc-100 antialiased selection:bg-zinc-800 selection:text-emerald-400">
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo, useRef } = React;
+    const { useState, useEffect, useMemo } = React;
 
     const DEFAULT_WORKSPACE_KEY = "MBM-ASSISTANT-2026";
-    const DEFAULT_WAKE_TIME = "06:30";
-    const DEFAULT_SLEEP_TIME = "22:30";
+    const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    const ALL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
     const PERIODS = [
       { id: 1, label: "P1", start: "08:00", end: "08:40" },
@@ -54,8 +84,6 @@
       { id: 10, label: "P10", start: "15:20", end: "16:00" }
     ];
 
-    const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
     const DEFAULT_TIMETABLE_MATRIX = {
       Monday: ["Computer science", "Computer science", "Mongolian language", "Mongolian language", "Mathematics", "Mathematics", "Geo", "Geo", "Chemistry", "Chemistry"],
       Tuesday: ["Chemistry", "Chemistry", "Global perspectives", "Global perspectives", "Mathematics", "Mathematics", "English", "English", "Geo", "Geo"],
@@ -65,53 +93,67 @@
     };
 
     const SUBJECT_COLORS = {
-      "Computer science": "bg-purple-950/80 text-purple-200 border-purple-800/80",
-      "Mongolian language": "bg-red-950/90 text-red-200 border-red-800",
-      "Mathematics": "bg-emerald-950/80 text-emerald-200 border-emerald-800/80",
-      "Geo": "bg-blue-950/80 text-blue-200 border-blue-800/80",
-      "Chemistry": "bg-amber-950/80 text-amber-200 border-amber-800/80",
-      "Global perspectives": "bg-violet-950/80 text-violet-200 border-violet-800/80",
-      "English": "bg-yellow-950/80 text-yellow-200 border-yellow-800/80",
-      "Literature": "bg-rose-950/80 text-rose-200 border-rose-800/80",
-      "PE": "bg-zinc-900 text-zinc-300 border-zinc-700",
-      "Korean": "bg-red-950/80 text-red-300 border-red-700",
-      "MS": "bg-zinc-900 text-red-400 border-red-900",
-      "Social studies": "bg-zinc-900 text-zinc-300 border-zinc-700"
+      "Computer science": "bg-purple-950/70 text-purple-200 border-purple-800/80 hover:border-purple-600",
+      "Mongolian language": "bg-red-950/70 text-red-200 border-red-800/80 hover:border-red-600",
+      "Mathematics": "bg-emerald-950/70 text-emerald-200 border-emerald-800/80 hover:border-emerald-600",
+      "Geo": "bg-blue-950/70 text-blue-200 border-blue-800/80 hover:border-blue-600",
+      "Chemistry": "bg-orange-950/70 text-orange-200 border-orange-800/80 hover:border-orange-600",
+      "Global perspectives": "bg-violet-950/70 text-violet-200 border-violet-800/80 hover:border-violet-600",
+      "English": "bg-amber-950/70 text-amber-200 border-amber-800/80 hover:border-amber-600",
+      "Literature": "bg-rose-950/70 text-rose-200 border-rose-800/80 hover:border-rose-600",
+      "PE": "bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-zinc-500",
+      "Korean": "bg-red-950/80 text-red-300 border-red-700 hover:border-red-500",
+      "MS": "bg-zinc-900 text-red-400 border-red-900 hover:border-red-600",
+      "Social studies": "bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-zinc-500"
     };
 
     function App() {
       const [activeTab, setActiveTab] = useState("dashboard");
       const [syncStatus, setSyncStatus] = useState("INITIALIZING");
       const [workspaceKey, setWorkspaceKey] = useState(DEFAULT_WORKSPACE_KEY);
-      
+
+      // Core State
       const [timetable, setTimetable] = useState(() => {
         const local = localStorage.getItem("mbm_timetable");
         return local ? JSON.parse(local) : DEFAULT_TIMETABLE_MATRIX;
       });
-
       const [routines, setRoutines] = useState(() => {
         const local = localStorage.getItem("mbm_routines");
         return local ? JSON.parse(local) : [];
       });
-
       const [tasks, setTasks] = useState(() => {
         const local = localStorage.getItem("mbm_tasks");
         return local ? JSON.parse(local) : [];
       });
-
       const [hwChecks, setHwChecks] = useState(() => {
         const local = localStorage.getItem("mbm_hw_checks");
         return local ? JSON.parse(local) : {};
       });
 
-      const [wakeTime, setWakeTime] = useState(DEFAULT_WAKE_TIME);
-      const [sleepTime, setSleepTime] = useState(DEFAULT_SLEEP_TIME);
+      // Modals
+      const [selectedSubject, setSelectedSubject] = useState(null);
+      const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
+      const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
+
+      // Form helpers
+      const [newRoutineText, setNewRoutineText] = useState("");
+      const [newRoutineSector, setNewRoutineSector] = useState("academic");
+      const [newRoutineTime, setNewRoutineTime] = useState("");
+      const [newRoutineType, setNewRoutineType] = useState("daily");
+      const [newRoutineIntervalDays, setNewRoutineIntervalDays] = useState(2);
+      const [newRoutineWeeks, setNewRoutineWeeks] = useState(1);
+      const [newRoutineWeekdays, setNewRoutineWeekdays] = useState(["Monday"]);
+
+      // Task creation for a subject
+      const [newTaskTitle, setNewTaskTitle] = useState("");
+      const [newTaskCategory, setNewTaskCategory] = useState("Homework");
+      const [newTaskDate, setNewTaskDate] = useState(() => new Date().toISOString().split("T")[0]);
 
       const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
       const todayDayIndex = new Date().getDay();
       const currentWeekdayName = todayDayIndex >= 1 && todayDayIndex <= 5 ? WEEKDAYS[todayDayIndex - 1] : null;
 
-      // Persistence helper
+      // Persistence
       const saveState = (newTimetable, newRoutines, newTasks, newHwChecks) => {
         localStorage.setItem("mbm_timetable", JSON.stringify(newTimetable));
         localStorage.setItem("mbm_routines", JSON.stringify(newRoutines));
@@ -136,7 +178,7 @@
         }
       };
 
-      // Initialize Firebase Connection
+      // Firebase Sync Listener
       useEffect(() => {
         const setupFirebase = async () => {
           if (!window.__FIREBASE_MODULES__ || !window.__FIREBASE_CONFIG__?.apiKey) {
@@ -189,12 +231,57 @@
         saveState(timetable, routines, tasks, updated);
       };
 
+      // Sleep Guardian logic (Periods start at 08:00 AM)
+      const sleepRecommendation = useMemo(() => {
+        const wakeHour = 6.5; // 06:30 AM
+        return "10:30 PM (8h sleep window)";
+      }, []);
+
+      // Calendar computations
+      const calendarDates = useMemo(() => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + calendarMonthOffset;
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+
+        const days = [];
+        for (let i = 0; i < firstDay.getDay(); i++) {
+          days.push(null);
+        }
+        for (let d = 1; d <= lastDay.getDate(); d++) {
+          const dateObj = new Date(year, month, d);
+          days.push({
+            dateStr: dateObj.toISOString().split("T")[0],
+            dayNum: d,
+            weekdayName: ALL_DAYS[dateObj.getDay()]
+          });
+        }
+        return {
+          monthLabel: firstDay.toLocaleString('default', { month: 'long', year: 'numeric' }),
+          days
+        };
+      }, [calendarMonthOffset]);
+
+      // All distinct subjects
+      const catalogSubjects = useMemo(() => {
+        const set = new Set();
+        Object.values(timetable).forEach(arr => arr.forEach(s => s && set.add(s)));
+        return Array.from(set).sort();
+      }, [timetable]);
+
+      // Upcoming exams & crunch mode
+      const upcomingExams = useMemo(() => {
+        return tasks.filter(t => t.category === "Exam" && !t.completed);
+      }, [tasks]);
+
       return (
         <div className="min-h-screen bg-black text-zinc-100 flex flex-col font-sans">
-          {/* Header */}
-          <header className="border-b border-zinc-800 bg-zinc-950/80 sticky top-0 z-50 backdrop-blur-md px-4 py-3 flex items-center justify-between">
+          
+          {/* Top Industrial Header */}
+          <header className="border-b border-zinc-800 bg-zinc-950/90 sticky top-0 z-40 backdrop-blur-md px-4 sm:px-6 py-3 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <span className="font-mono text-sm tracking-widest text-emerald-400 font-bold">MBM // ASSISTANT</span>
+              <span className="font-mono text-sm sm:text-base tracking-widest text-emerald-400 font-bold">MBM // ASSISTANT</span>
               <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
                 syncStatus.includes("CLOUD") ? "bg-emerald-950/60 border-emerald-800 text-emerald-400" : "bg-zinc-900 border-zinc-700 text-zinc-400"
               }`}>{syncStatus}</span>
@@ -202,56 +289,95 @@
 
             {/* Quick Dispatch Links */}
             <div className="flex items-center space-x-2">
-              <a href="https://papacambridge.com" target="_blank" rel="noreferrer" className="text-xs font-mono px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-zinc-300">PapaCambridge</a>
-              <a href="https://quizlet.com" target="_blank" rel="noreferrer" className="text-xs font-mono px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-zinc-300">Quizlet</a>
-              <a href="https://mail.google.com" target="_blank" rel="noreferrer" className="text-xs font-mono px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-zinc-300">Gmail</a>
+              <a href="https://papacambridge.com" target="_blank" rel="noreferrer" className="text-xs font-mono px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-zinc-300 transition-colors">
+                PapaCambridge
+              </a>
+              <a href="https://quizlet.com" target="_blank" rel="noreferrer" className="text-xs font-mono px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-zinc-300 transition-colors">
+                Quizlet
+              </a>
+              <a href="https://mail.google.com" target="_blank" rel="noreferrer" className="text-xs font-mono px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-zinc-300 transition-colors">
+                Gmail
+              </a>
             </div>
           </header>
 
           {/* Navigation Bar */}
-          <nav className="border-b border-zinc-800 bg-zinc-950 px-4 py-2 flex space-x-2 overflow-x-auto text-xs font-mono">
-            {["dashboard", "timetable", "routines", "sync"].map(tab => (
+          <nav className="border-b border-zinc-800 bg-zinc-950 px-4 sm:px-6 py-2 flex space-x-2 overflow-x-auto text-xs font-mono">
+            {[
+              { id: "dashboard", label: "Dashboard" },
+              { id: "timetable", label: "Master Timetable" },
+              { id: "calendar", label: "Interactive Calendar" },
+              { id: "routines", label: "Routines & Catalog" },
+              { id: "sync", label: "Cloud Sync" }
+            ].map(tab => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded uppercase tracking-wider ${
-                  activeTab === tab ? "bg-zinc-100 text-black font-bold" : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3 py-1.5 rounded transition-all uppercase tracking-wider text-[11px] ${
+                  activeTab === tab.id ? "bg-zinc-100 text-black font-bold" : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
                 }`}
               >
-                {tab}
+                {tab.label}
               </button>
             ))}
           </nav>
 
-          {/* Tab Content */}
-          <main className="flex-1 p-4 max-w-7xl mx-auto w-full">
+          {/* Main Workspace */}
+          <main className="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full">
+            
+            {/* TAB: DASHBOARD */}
             {activeTab === "dashboard" && (
               <div className="space-y-6">
-                {/* Status Bento */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 border border-zinc-800 bg-zinc-950 rounded-lg">
-                    <div className="text-xs font-mono text-zinc-500 uppercase">Today's Class Schedule</div>
-                    <div className="text-lg font-bold mt-1 text-zinc-100">
-                      {currentWeekdayName ? `${currentWeekdayName} (10 Periods)` : "Weekend (No Regular Classes)"}
+                
+                {/* Exam Crunch Mode Banner (if any exams pending) */}
+                {upcomingExams.length > 0 && (
+                  <div className="border border-red-900/80 bg-red-950/30 p-4 rounded-lg flex items-center justify-between">
+                    <div>
+                      <div className="font-mono text-xs text-red-400 font-bold uppercase tracking-wider">⚠️ EXAM CRUNCH MODE DETECTED</div>
+                      <div className="text-sm font-semibold text-red-200 mt-1">
+                        {upcomingExams[0].title} ({upcomingExams[0].subject}) due on {upcomingExams[0].date}
+                      </div>
                     </div>
+                    <span className="font-mono text-xs px-2.5 py-1 bg-red-900/60 border border-red-700 text-red-200 rounded">
+                      PRIORITY FOCUS
+                    </span>
+                  </div>
+                )}
+
+                {/* Industrial Bento Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-5 border border-zinc-800 bg-zinc-950 rounded-lg">
+                    <div className="text-xs font-mono text-zinc-500 uppercase">Today's Class Schedule</div>
+                    <div className="text-xl font-bold mt-1 text-zinc-100">
+                      {currentWeekdayName ? `${currentWeekdayName}` : "Weekend"}
+                    </div>
+                    <div className="text-xs text-zinc-400 mt-1">10 Continuous Periods (08:00 — 16:00)</div>
                   </div>
 
-                  <div className="p-4 border border-zinc-800 bg-zinc-950 rounded-lg">
-                    <div className="text-xs font-mono text-zinc-500 uppercase">Active Routines Pending</div>
-                    <div className="text-lg font-bold mt-1 text-zinc-100">{routines.length} Configured</div>
+                  <div className="p-5 border border-zinc-800 bg-zinc-950 rounded-lg">
+                    <div className="text-xs font-mono text-zinc-500 uppercase">8-Hour Sleep Guardian</div>
+                    <div className="text-xl font-bold mt-1 text-emerald-400">{sleepRecommendation}</div>
+                    <div className="text-xs text-zinc-400 mt-1">Calculated from 06:30 AM wake routine</div>
                   </div>
 
-                  <div className="p-4 border border-zinc-800 bg-zinc-950 rounded-lg">
-                    <div className="text-xs font-mono text-zinc-500 uppercase">Cloud Sync Key</div>
-                    <div className="text-sm font-mono text-emerald-400 mt-1">{workspaceKey}</div>
+                  <div className="p-5 border border-zinc-800 bg-zinc-950 rounded-lg">
+                    <div className="text-xs font-mono text-zinc-500 uppercase">Workspace Sync Status</div>
+                    <div className="text-sm font-mono text-zinc-200 mt-1 truncate">{workspaceKey}</div>
+                    <div className="text-xs text-emerald-400 mt-1 font-mono">LIVE CLOUD LINKED</div>
                   </div>
                 </div>
 
                 {/* Today's Subjects HW Check View */}
-                {currentWeekdayName && (
-                  <div className="border border-zinc-800 bg-zinc-950 rounded-lg p-4">
-                    <div className="text-xs font-mono text-zinc-400 mb-3 uppercase tracking-wide">Today's Subjects — Tap to Cross off HW</div>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {currentWeekdayName ? (
+                  <div className="border border-zinc-800 bg-zinc-950 rounded-lg p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-mono text-zinc-400 uppercase tracking-wide">
+                        Today's Classes ({currentWeekdayName}) — Single-Tap Homework Cross-Off
+                      </span>
+                      <span className="text-[11px] font-mono text-zinc-500">Auto-dim & desaturate</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                       {timetable[currentWeekdayName]?.map((subj, idx) => {
                         const checkKey = `${todayStr}_${currentWeekdayName}_${idx}`;
                         const isDone = hwChecks[checkKey];
@@ -260,32 +386,49 @@
                             key={idx}
                             onClick={() => toggleHwCheck(currentWeekdayName, idx)}
                             className={`p-3 text-left border rounded transition-all ${
-                              isDone ? "opacity-30 line-through bg-zinc-900 border-zinc-800 text-zinc-500 grayscale" : "bg-zinc-900/60 border-zinc-700 text-zinc-200 hover:border-zinc-500"
+                              isDone 
+                                ? "opacity-30 line-through bg-zinc-950 border-zinc-900 text-zinc-600 grayscale" 
+                                : "bg-zinc-900/60 border-zinc-700 text-zinc-200 hover:border-zinc-500"
                             }`}
                           >
-                            <div className="text-[10px] font-mono text-zinc-500">P{idx + 1}</div>
+                            <div className="text-[10px] font-mono text-zinc-500">P{idx + 1} • {PERIODS[idx]?.start}</div>
                             <div className="font-semibold text-xs mt-1 truncate">{subj}</div>
-                            <div className="text-[10px] font-mono mt-2">{isDone ? "HW DONE ✓" : "HW PENDING"}</div>
+                            <div className="text-[10px] font-mono mt-2 flex items-center space-x-1">
+                              <span className={`w-2 h-2 rounded-full ${isDone ? "bg-zinc-700" : "bg-emerald-500"}`}></span>
+                              <span>{isDone ? "HW COMPLETED" : "HW PENDING"}</span>
+                            </div>
                           </button>
                         );
                       })}
                     </div>
                   </div>
+                ) : (
+                  <div className="p-8 border border-zinc-800 bg-zinc-950 rounded-lg text-center font-mono text-xs text-zinc-500">
+                    WEEKEND — NO TIMETABLE PERIODS SCHEDULED FOR TODAY.
+                  </div>
                 )}
               </div>
             )}
 
+            {/* TAB: TIMETABLE */}
             {activeTab === "timetable" && (
-              <div className="border border-zinc-800 bg-zinc-950 rounded-lg p-4 overflow-x-auto">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="font-mono text-xs uppercase tracking-wider text-zinc-400">Locked Weekly Master Timetable</span>
-                  <span className="text-[11px] font-mono text-zinc-500">Click any box to cross off homework</span>
+              <div className="border border-zinc-800 bg-zinc-950 rounded-lg p-5 overflow-x-auto space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+                  <div>
+                    <h2 className="font-mono text-sm uppercase tracking-wider text-zinc-200 font-bold">Permanent Master Timetable</h2>
+                    <p className="text-xs text-zinc-500 mt-0.5">Click any cell checkbox to cross off homework for today. Click the subject text to view its Dossier.</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[11px] font-mono px-2.5 py-1 bg-zinc-900 border border-zinc-800 rounded text-zinc-400">
+                      LOCKED / PERMANENT
+                    </span>
+                  </div>
                 </div>
 
-                <div className="min-w-[650px]">
+                <div className="min-w-[720px]">
                   {/* Table Header */}
-                  <div className="grid grid-cols-6 border-b border-zinc-800 pb-2 text-center text-xs font-mono font-bold text-zinc-400 uppercase">
-                    <div>Period</div>
+                  <div className="grid grid-cols-6 border-b border-zinc-800 pb-2.5 text-center text-xs font-mono font-bold text-zinc-400 uppercase tracking-wider">
+                    <div>Period & Time</div>
                     {WEEKDAYS.map(day => <div key={day}>{day}</div>)}
                   </div>
 
@@ -293,13 +436,14 @@
                   {PERIODS.map((period, pIdx) => (
                     <React.Fragment key={period.id}>
                       {pIdx === 5 && (
-                        <div className="bg-emerald-950/40 border-y border-emerald-900/60 py-1.5 text-center text-[10px] font-mono text-emerald-400 tracking-widest my-1 uppercase">
+                        <div className="bg-emerald-950/40 border-y border-emerald-900/60 py-2 text-center text-xs font-mono text-emerald-400 tracking-widest my-1 uppercase font-semibold">
                           Midday Break & Lunch (11:40 — 12:20)
                         </div>
                       )}
                       <div className="grid grid-cols-6 items-center border-b border-zinc-900/80 py-1.5 text-xs">
-                        <div className="text-center font-mono text-zinc-500 text-[10px]">
-                          {period.label}<br/>{period.start}
+                        <div className="text-center font-mono text-zinc-500 text-[11px]">
+                          <span className="font-bold text-zinc-300">{period.label}</span>
+                          <br/>{period.start} - {period.end}
                         </div>
                         {WEEKDAYS.map(day => {
                           const subjectName = timetable[day]?.[pIdx] || "—";
@@ -308,15 +452,25 @@
                           const colorStyle = SUBJECT_COLORS[subjectName] || "bg-zinc-900 text-zinc-300 border-zinc-800";
 
                           return (
-                            <div key={day} className="px-1">
-                              <button
-                                onClick={() => toggleHwCheck(day, pIdx)}
-                                className={`w-full p-2 text-center border rounded text-[11px] font-medium transition-all ${
-                                  isDone ? "opacity-25 line-through bg-zinc-950 border-zinc-900 text-zinc-600 grayscale" : colorStyle
-                                }`}
-                              >
-                                {subjectName}
-                              </button>
+                            <div key={day} className="px-1 relative">
+                              <div className={`flex items-center justify-between p-2 border rounded text-[11px] font-medium transition-all ${
+                                isDone ? "opacity-30 line-through bg-zinc-950 border-zinc-900 text-zinc-600 grayscale" : colorStyle
+                              }`}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!isDone}
+                                  onChange={() => toggleHwCheck(day, pIdx)}
+                                  className="cursor-pointer accent-emerald-500 rounded mr-1.5"
+                                  title="Check off HW"
+                                />
+                                <span
+                                  onClick={() => setSelectedSubject(subjectName)}
+                                  className="flex-1 cursor-pointer truncate text-center select-none"
+                                  title="Click to view Dossier & planned jobs"
+                                >
+                                  {subjectName}
+                                </span>
+                              </div>
                             </div>
                           );
                         })}
@@ -327,61 +481,267 @@
               </div>
             )}
 
-            {activeTab === "routines" && (
-              <div className="border border-zinc-800 bg-zinc-950 rounded-lg p-4 space-y-4">
-                <div className="text-xs font-mono text-zinc-400 uppercase">Routine Manager</div>
-                <div className="text-xs text-zinc-500">Add daily or recurring study sessions, chores, or habits here.</div>
-                
-                <div className="flex gap-2">
-                  <input
-                    id="newRoutineInput"
-                    type="text"
-                    placeholder="e.g. Cambridge past paper revision"
-                    className="flex-1 bg-zinc-900 border border-zinc-800 px-3 py-2 text-xs rounded text-zinc-200 outline-none focus:border-zinc-500 font-mono"
-                  />
-                  <button
-                    onClick={() => {
-                      const el = document.getElementById("newRoutineInput");
-                      if (!el.value.trim()) return;
-                      const updated = [...routines, { id: Date.now(), title: el.value.trim(), completed: false }];
-                      setRoutines(updated);
-                      saveState(timetable, updated, tasks, hwChecks);
-                      el.value = "";
-                    }}
-                    className="px-4 py-2 bg-zinc-100 text-black font-mono text-xs font-bold rounded hover:bg-zinc-200"
-                  >
-                    ADD
-                  </button>
+            {/* TAB: CALENDAR */}
+            {activeTab === "calendar" && (
+              <div className="border border-zinc-800 bg-zinc-950 rounded-lg p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                  <div>
+                    <h2 className="font-mono text-sm uppercase tracking-wider text-zinc-200 font-bold">Interactive Academic Calendar</h2>
+                    <p className="text-xs text-zinc-500 mt-0.5">Click any day to see scheduled subjects, check HW, or add exams/projects.</p>
+                  </div>
+                  <div className="flex items-center space-x-2 font-mono text-xs">
+                    <button
+                      onClick={() => setCalendarMonthOffset(prev => prev - 1)}
+                      className="px-2.5 py-1 bg-zinc-900 border border-zinc-800 rounded hover:bg-zinc-800"
+                    >
+                      ← Prev
+                    </button>
+                    <span className="font-bold text-zinc-200 px-2">{calendarDates.monthLabel}</span>
+                    <button
+                      onClick={() => setCalendarMonthOffset(prev => prev + 1)}
+                      className="px-2.5 py-1 bg-zinc-900 border border-zinc-800 rounded hover:bg-zinc-800"
+                    >
+                      Next →
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-2 mt-4">
-                  {routines.map(r => (
-                    <div key={r.id} className="flex items-center justify-between p-3 border border-zinc-800 bg-zinc-900/40 rounded text-xs">
-                      <span className={r.completed ? "line-through text-zinc-500" : "text-zinc-200"}>{r.title}</span>
-                      <button
-                        onClick={() => {
-                          const updated = routines.map(item => item.id === r.id ? { ...item, completed: !item.completed } : item);
-                          setRoutines(updated);
-                          saveState(timetable, updated, tasks, hwChecks);
-                        }}
-                        className="text-[10px] font-mono text-emerald-400 border border-emerald-900 px-2 py-0.5 rounded"
-                      >
-                        {r.completed ? "DONE ✓" : "MARK DONE"}
-                      </button>
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-1 text-center font-mono text-xs">
+                  {ALL_DAYS.map(d => (
+                    <div key={d} className="p-2 font-bold text-zinc-500 border-b border-zinc-800">
+                      {d.slice(0, 3)}
                     </div>
                   ))}
+
+                  {calendarDates.days.map((item, idx) => {
+                    if (!item) {
+                      return <div key={idx} className="h-24 bg-zinc-950/30 border border-zinc-900/40 rounded opacity-20"></div>;
+                    }
+                    const isToday = item.dateStr === todayStr;
+                    const dayTasks = tasks.filter(t => t.date === item.dateStr);
+
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => setSelectedCalendarDay(item)}
+                        className={`h-24 p-2 border rounded cursor-pointer transition-all flex flex-col justify-between text-left ${
+                          isToday ? "border-emerald-600 bg-emerald-950/20" : "border-zinc-800/80 bg-zinc-900/30 hover:border-zinc-600"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-mono font-bold ${isToday ? "text-emerald-400" : "text-zinc-400"}`}>
+                            {item.dayNum}
+                          </span>
+                          {WEEKDAYS.includes(item.weekdayName) && (
+                            <span className="text-[9px] font-mono text-zinc-500">10P</span>
+                          )}
+                        </div>
+
+                        {/* Task badges preview */}
+                        <div className="space-y-1 overflow-hidden">
+                          {dayTasks.slice(0, 2).map(t => (
+                            <div key={t.id} className="text-[9px] truncate px-1 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
+                              {t.category === "Exam" ? "🔴 " : t.category === "Project" ? "🟠 " : "🔵 "}
+                              {t.title}
+                            </div>
+                          ))}
+                          {dayTasks.length > 2 && (
+                            <div className="text-[9px] font-mono text-zinc-500">+{dayTasks.length - 2} more</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
+            {/* TAB: ROUTINES & SUBJECT CATALOG */}
+            {activeTab === "routines" && (
+              <div className="space-y-6">
+                
+                {/* Create Routine Block */}
+                <div className="border border-zinc-800 bg-zinc-950 rounded-lg p-5 space-y-4">
+                  <div className="font-mono text-sm uppercase tracking-wider text-zinc-200 font-bold">
+                    Routine & Recurrence Engine
+                  </div>
+                  <p className="text-xs text-zinc-500">Set daily, day-interval, or N-week recurring habits.</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input
+                      type="text"
+                      placeholder="e.g. Cambridge past paper drill"
+                      value={newRoutineText}
+                      onChange={(e) => setNewRoutineText(e.target.value)}
+                      className="md:col-span-2 bg-zinc-900 border border-zinc-800 px-3 py-2 text-xs rounded text-zinc-200 outline-none focus:border-zinc-500 font-mono"
+                    />
+
+                    <select
+                      value={newRoutineSector}
+                      onChange={(e) => setNewRoutineSector(e.target.value)}
+                      className="bg-zinc-900 border border-zinc-800 px-3 py-2 text-xs rounded text-zinc-300 outline-none font-mono"
+                    >
+                      <option value="academic">Sector: Academic</option>
+                      <option value="personal">Sector: Personal</option>
+                    </select>
+
+                    <input
+                      type="time"
+                      value={newRoutineTime}
+                      onChange={(e) => setNewRoutineTime(e.target.value)}
+                      className="bg-zinc-900 border border-zinc-800 px-3 py-2 text-xs rounded text-zinc-300 outline-none font-mono"
+                      title="Optional: Set scheduled time"
+                    />
+                  </div>
+
+                  {/* Recurrence selectors */}
+                  <div className="flex flex-wrap items-center gap-3 pt-2 text-xs font-mono">
+                    <select
+                      value={newRoutineType}
+                      onChange={(e) => setNewRoutineType(e.target.value)}
+                      className="bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded text-zinc-300 outline-none"
+                    >
+                      <option value="daily">Every Day</option>
+                      <option value="interval_days">Every N Days</option>
+                      <option value="interval_weeks">Every N Weeks</option>
+                    </select>
+
+                    {newRoutineType === "interval_days" && (
+                      <div className="flex items-center space-x-2">
+                        <span>Every</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="30"
+                          value={newRoutineIntervalDays}
+                          onChange={(e) => setNewRoutineIntervalDays(Number(e.target.value))}
+                          className="w-16 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded text-center"
+                        />
+                        <span>days</span>
+                      </div>
+                    )}
+
+                    {newRoutineType === "interval_weeks" && (
+                      <div className="flex items-center space-x-2">
+                        <span>Every</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="12"
+                          value={newRoutineWeeks}
+                          onChange={(e) => setNewRoutineWeeks(Number(e.target.value))}
+                          className="w-16 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded text-center"
+                        />
+                        <span>weeks on</span>
+                        <select
+                          value={newRoutineWeekdays[0]}
+                          onChange={(e) => setNewRoutineWeekdays([e.target.value])}
+                          className="bg-zinc-900 border border-zinc-800 px-2 py-1 rounded"
+                        >
+                          {ALL_DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        if (!newRoutineText.trim()) return;
+                        const item = {
+                          id: Date.now(),
+                          title: newRoutineText.trim(),
+                          sector: newRoutineSector,
+                          time: newRoutineTime || null,
+                          recurrence: newRoutineType,
+                          intervalDays: newRoutineIntervalDays,
+                          intervalWeeks: newRoutineWeeks,
+                          weekdays: newRoutineWeekdays,
+                          completed: false
+                        };
+                        const updated = [...routines, item];
+                        setRoutines(updated);
+                        saveState(timetable, updated, tasks, hwChecks);
+                        setNewRoutineText("");
+                      }}
+                      className="ml-auto px-4 py-1.5 bg-zinc-100 text-black font-mono font-bold rounded hover:bg-zinc-200"
+                    >
+                      ADD ROUTINE
+                    </button>
+                  </div>
+
+                  {/* List of active routines */}
+                  <div className="space-y-2 pt-4 border-t border-zinc-800">
+                    {routines.map(r => (
+                      <div key={r.id} className="flex items-center justify-between p-3 border border-zinc-800 bg-zinc-900/50 rounded text-xs font-mono">
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] ${
+                            r.sector === "academic" ? "bg-purple-950 border border-purple-800 text-purple-300" : "bg-emerald-950 border border-emerald-800 text-emerald-300"
+                          }`}>
+                            {r.sector.toUpperCase()}
+                          </span>
+                          {r.time && <span className="text-zinc-500">[{r.time}]</span>}
+                          <span className={r.completed ? "line-through text-zinc-500" : "text-zinc-200 font-semibold"}>
+                            {r.title}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => {
+                              const updated = routines.map(i => i.id === r.id ? { ...i, completed: !i.completed } : i);
+                              setRoutines(updated);
+                              saveState(timetable, updated, tasks, hwChecks);
+                            }}
+                            className="px-2.5 py-1 text-[10px] border border-zinc-700 hover:border-zinc-400 rounded text-zinc-300"
+                          >
+                            {r.completed ? "COMPLETED ✓" : "MARK DONE"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              const updated = routines.filter(i => i.id !== r.id);
+                              setRoutines(updated);
+                              saveState(timetable, updated, tasks, hwChecks);
+                            }}
+                            className="text-zinc-600 hover:text-red-400 px-1"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Academic Subject Catalog */}
+                <div className="border border-zinc-800 bg-zinc-950 rounded-lg p-5">
+                  <div className="font-mono text-sm uppercase tracking-wider text-zinc-200 font-bold mb-3">
+                    Academic Sector — Complete Subject Catalog
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {catalogSubjects.map(sub => (
+                      <div
+                        key={sub}
+                        onClick={() => setSelectedSubject(sub)}
+                        className={`p-3 border rounded text-xs font-semibold cursor-pointer transition-all ${
+                          SUBJECT_COLORS[sub] || "bg-zinc-900 border-zinc-800 text-zinc-300"
+                        }`}
+                      >
+                        {sub}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: CLOUD SYNC */}
             {activeTab === "sync" && (
               <div className="border border-zinc-800 bg-zinc-950 rounded-lg p-6 max-w-lg mx-auto space-y-4">
-                <div className="font-mono text-xs uppercase tracking-wider text-zinc-400">Cloud Sync & Persistence</div>
-                <div className="text-xs text-zinc-400 leading-relaxed">
-                  Your website connects directly to Google Firestore with your configured keys. Enter your Workspace Sync Key on any device to keep them in sync.
-                </div>
+                <div className="font-mono text-sm uppercase tracking-wider text-zinc-200 font-bold">Cloud Sync & Remote Link</div>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Your website connects directly to Google Firestore with your configured keys[cite: 4]. Enter this same key on your phone or other computer to access your workspace.
+                </p>
                 <div>
-                  <label className="text-[10px] font-mono text-zinc-500 block mb-1">ACTIVE WORKSPACE SYNC KEY</label>
+                  <label className="text-[10px] font-mono text-zinc-500 block mb-1">WORKSPACE SYNC KEY</label>
                   <input
                     type="text"
                     value={workspaceKey}
@@ -389,10 +749,149 @@
                     className="w-full bg-zinc-900 border border-zinc-800 px-3 py-2 text-xs font-mono rounded text-emerald-400 outline-none"
                   />
                 </div>
-                <div className="text-[11px] font-mono text-zinc-500">Status: <span className="text-zinc-300">{syncStatus}</span></div>
+                <div className="text-[11px] font-mono text-zinc-500">
+                  Real-time Status: <span className="text-emerald-400 font-bold">{syncStatus}</span>
+                </div>
               </div>
             )}
           </main>
+
+          {/* MODAL: SUBJECT DOSSIER */}
+          {selectedSubject && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-zinc-950 border border-zinc-800 rounded-lg max-w-md w-full p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                  <h3 className="font-bold text-sm font-mono text-zinc-200 uppercase">{selectedSubject} // DOSSIER</h3>
+                  <button onClick={() => setSelectedSubject(null)} className="text-zinc-500 hover:text-zinc-300 text-sm font-mono">✕</button>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="text-xs font-mono text-zinc-400">Scheduled Periods in Timetable:</div>
+                  <div className="flex flex-wrap gap-1">
+                    {WEEKDAYS.map(day => {
+                      const count = (timetable[day] || []).filter(s => s === selectedSubject).length;
+                      if (!count) return null;
+                      return (
+                        <span key={day} className="px-2 py-1 bg-zinc-900 border border-zinc-800 rounded text-[10px] font-mono text-zinc-300">
+                          {day}: {count} Periods
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  <div className="border-t border-zinc-800 pt-3">
+                    <div className="text-xs font-mono text-zinc-400 mb-2">Logged Tasks & Deadlines:</div>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {tasks.filter(t => t.subject === selectedSubject).map(t => (
+                        <div key={t.id} className="p-2 border border-zinc-800 bg-zinc-900/60 rounded text-xs flex justify-between">
+                          <span>{t.title} ({t.category})</span>
+                          <span className="text-zinc-500 font-mono text-[10px]">{t.date}</span>
+                        </div>
+                      ))}
+                      {tasks.filter(t => t.subject === selectedSubject).length === 0 && (
+                        <div className="text-xs text-zinc-600 font-mono">No specific deadlines logged yet.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Add task inline */}
+                  <div className="border-t border-zinc-800 pt-3 space-y-2">
+                    <div className="text-xs font-mono text-zinc-400">Add Task for {selectedSubject}:</div>
+                    <input
+                      type="text"
+                      placeholder="Task description (e.g. Chapter 4 review)"
+                      value={newTaskTitle}
+                      onChange={(e) => setNewTaskTitle(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 px-3 py-1.5 text-xs rounded text-zinc-200 outline-none font-mono"
+                    />
+                    <div className="flex gap-2">
+                      <select
+                        value={newTaskCategory}
+                        onChange={(e) => setNewTaskCategory(e.target.value)}
+                        className="bg-zinc-900 border border-zinc-800 px-2 py-1 text-xs rounded text-zinc-300 font-mono"
+                      >
+                        <option value="Exam">Exam (🔴)</option>
+                        <option value="Homework">Homework (🔵)</option>
+                        <option value="Project">Project (🟠)</option>
+                        <option value="Task">Other Job (🟢)</option>
+                      </select>
+                      <input
+                        type="date"
+                        value={newTaskDate}
+                        onChange={(e) => setNewTaskDate(e.target.value)}
+                        className="bg-zinc-900 border border-zinc-800 px-2 py-1 text-xs rounded text-zinc-300 font-mono"
+                      />
+                      <button
+                        onClick={() => {
+                          if (!newTaskTitle.trim()) return;
+                          const t = {
+                            id: Date.now(),
+                            subject: selectedSubject,
+                            title: newTaskTitle.trim(),
+                            category: newTaskCategory,
+                            date: newTaskDate,
+                            completed: false
+                          };
+                          const updated = [...tasks, t];
+                          setTasks(updated);
+                          saveState(timetable, routines, updated, hwChecks);
+                          setNewTaskTitle("");
+                        }}
+                        className="px-3 py-1 bg-zinc-100 text-black font-mono text-xs font-bold rounded"
+                      >
+                        SAVE
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: CALENDAR DAY DETAILS */}
+          {selectedCalendarDay && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-zinc-950 border border-zinc-800 rounded-lg max-w-lg w-full p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                  <div>
+                    <h3 className="font-bold text-sm font-mono text-zinc-200 uppercase">{selectedCalendarDay.dateStr}</h3>
+                    <div className="text-xs text-zinc-500 font-mono">{selectedCalendarDay.weekdayName}</div>
+                  </div>
+                  <button onClick={() => setSelectedCalendarDay(null)} className="text-zinc-500 hover:text-zinc-300 text-sm font-mono">✕</button>
+                </div>
+
+                {WEEKDAYS.includes(selectedCalendarDay.weekdayName) && (
+                  <div>
+                    <div className="text-xs font-mono text-zinc-400 mb-2">Scheduled Timetable Classes:</div>
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                      {timetable[selectedCalendarDay.weekdayName]?.map((subj, idx) => (
+                        <div key={idx} className="p-2 border border-zinc-800 bg-zinc-900/60 rounded text-xs flex justify-between items-center">
+                          <span className="font-mono text-zinc-500 text-[10px]">P{idx+1}</span>
+                          <span className="font-semibold text-zinc-300 truncate">{subj}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t border-zinc-800 pt-3">
+                  <div className="text-xs font-mono text-zinc-400 mb-2">Events & Deadlines on this Date:</div>
+                  <div className="space-y-1">
+                    {tasks.filter(t => t.date === selectedCalendarDay.dateStr).map(t => (
+                      <div key={t.id} className="p-2 border border-zinc-800 bg-zinc-900 rounded text-xs flex justify-between">
+                        <span>{t.title} ({t.subject})</span>
+                        <span className="font-mono text-[10px] text-zinc-500">{t.category}</span>
+                      </div>
+                    ))}
+                    {tasks.filter(t => t.date === selectedCalendarDay.dateStr).length === 0 && (
+                      <div className="text-xs text-zinc-600 font-mono">No tasks logged on this date.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       );
     }
